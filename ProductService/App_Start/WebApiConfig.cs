@@ -25,6 +25,15 @@ namespace ProductService
             ODataConventionModelBuilder builder = new ODataConventionModelBuilder();
             builder.EntitySet<Product>("Products");
             builder.EntitySet<Supplier>("Suppliers");
+            builder.EntitySet<ProductRating>("Ratings");
+
+            //new code: Add an action to the EDM, and define the parameter and return type
+            ActionConfiguration rateProduct = builder.Entity<Product>().Action("RateProduct");
+            rateProduct.Parameter<int>("Rating");
+            rateProduct.Returns<double>();
+
+            var rateAllProducts = builder.Entity<Product>().Collection.Action("RateAllProducts");
+            rateAllProducts.CollectionParameter<int>("Ratings");
 
             config.Routes.MapODataRoute("odata", "odata", builder.GetEdmModel());
 

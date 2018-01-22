@@ -112,8 +112,13 @@
     <Compile Include="Migrations\201801191138413_Initial.Designer.cs">
       <DependentUpon>201801191138413_Initial.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\201801221617530_SUpplier and ratings.cs" />
+    <Compile Include="Migrations\201801221617530_SUpplier and ratings.Designer.cs">
+      <DependentUpon>201801221617530_SUpplier and ratings.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Product.cs" />
+    <Compile Include="Models\ProductRating.cs" />
     <Compile Include="Models\ProductServiceContext.cs" />
     <Compile Include="Models\Supplier.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -133,6 +138,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Migrations\201801191138413_Initial.resx">
       <DependentUpon>201801191138413_Initial.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201801221617530_SUpplier and ratings.resx">
+      <DependentUpon>201801221617530_SUpplier and ratings.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>

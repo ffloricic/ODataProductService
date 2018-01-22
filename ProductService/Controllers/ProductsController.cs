@@ -6,10 +6,14 @@ using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.ModelBinding;
 using System.Web.Http.OData;
 using System.Web.Http.OData.Routing;
+using System.Web.Http.Routing;
+using Microsoft.Data.OData;
+using Microsoft.Data.OData.Query;
 using ProductService.Models;
 
 namespace ProductService.Controllers
@@ -146,16 +150,149 @@ namespace ProductService.Controllers
             return StatusCode(HttpStatusCode.NoContent);
         }
 
-        //GET /products(1)/SUpplier
+        //GET /products(1)/Supplier
         public Supplier GetSupplier([FromODataUri] int key)
         {
             Product product = db.Products.FirstOrDefault(p => p.ID == key);
-            if(product == null)
+            if (product == null)
             {
                 throw new HttpResponseException(HttpStatusCode.NotFound);
             }
 
             return product.Supplier;
+        }
+
+        //POST http://localhost/odata/Products(1)/$links/Supplier
+        //Content-Type: application/json
+        //Content-Length: 50
+
+        //{"url":"http://localhost/odata/Suppliers('CTSO')"}
+        [AcceptVerbs("POST", "PUT")]
+        public async Task<IHttpActionResult> CreateLink([FromODataUri] int key, string navigationProperty, [FromBody] Uri link)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            Product product = await db.Products.FindAsync(key);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            switch (navigationProperty)
+            {
+                case "Supplier":
+                    string supplierKey = GetKeyFromLinkUri<string>(link);
+                    Supplier supplier = await db.Suppliers.FindAsync(supplierKey);
+                    if (supplier == null)
+                    {
+                        return NotFound();
+                    }
+
+                    product.Supplier = supplier;
+                    await db.SaveChangesAsync();
+                    return StatusCode(HttpStatusCode.NoContent);
+                default:
+                    return NotFound();
+            }
+
+        }
+
+        //helper method to extract the key from OData URI
+        private TKey GetKeyFromLinkUri<TKey>(Uri link)
+        {
+            TKey key = default(TKey);
+
+            ////get the route that was used for this request
+            IHttpRoute route = Request.GetRouteData().Route;
+
+            //creates an equivalent self-hosted route
+            IHttpRoute newRoute = new HttpRoute(route.RouteTemplate
+                , new HttpRouteValueDictionary(route.Defaults)
+                , new HttpRouteValueDictionary(route.Constraints)
+                , new HttpRouteValueDictionary(route.DataTokens)
+                , route.Handler);
+
+            //create a fake GET request for the link URi
+            var tmpRequest = new HttpRequestMessage(HttpMethod.Get, link);
+
+            //senf this request through routing process
+            var routeData = newRoute.GetRouteData(Request.GetConfiguration().VirtualPathRoot, tmpRequest);
+
+            //it the get request matches the route, use the path segments to find the key
+            if (routeData != null)
+            {
+                ODataPath path = tmpRequest.GetODataPath();
+                var segment = path.Segments.OfType<KeyValuePathSegment>().FirstOrDefault();
+                if (segment != null)
+                {
+                    //convert the segment into the key type
+                    key = (TKey)ODataUriUtils.ConvertFromUriLiteral(segment.Value, ODataVersion.V3);
+                }
+            }
+
+            return key;
+        }
+
+        public async Task<IHttpActionResult> DeleteLink([FromODataUri] int key, string navigationProperty)
+        {
+            Product product = await db.Products.FindAsync(key);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            switch (navigationProperty)
+            {
+                case "Supplier":
+                    product.Supplier = null;
+                    await db.SaveChangesAsync();
+                    return StatusCode(HttpStatusCode.NoContent);
+
+                default:
+                    return NotFound();
+            }
+        }
+
+        //http://localhost/odata/Products(1)/RateProduct
+        //{"Rating":2}
+        [HttpPost]
+        public async Task<IHttpActionResult> RateProduct([FromODataUri] int key, ODataActionParameters parameters)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
+
+            int rating = (int)parameters["Rating"];
+            Product product = await db.Products.FindAsync(key);
+            if (product == null)
+            {
+                NotFound();
+            }
+
+            product.Ratings.Add(new ProductRating() { Rating = rating });
+            db.SaveChanges();
+
+            double average = product.Ratings.Average(r => r.Rating);
+
+            return Ok(average);
+        }
+
+        [HttpPost]
+        public int RateAllProducts(ODataActionParameters parameters)
+        {
+            if (!ModelState.IsValid)
+            {
+                throw new HttpResponseException(HttpStatusCode.BadRequest);
+            }
+
+            var ratings = parameters["Ratings"] as ICollection<int>;
+
+            //ovo je ovdje stavljeno samo kako bi se moglo compilirati. Inače, nije jasno iz objašenjenja, šta bi trebala raditi ova funkcija
+            return 0;
         }
 
         protected override void Dispose(bool disposing)

@@ -16,5 +16,12 @@ namespace ProductService.Models
         [ForeignKey("Supplier")]
         public string SupplierId { get; set; }
         public Supplier Supplier { get; set; }
+
+        public virtual List<ProductRating> Ratings { get; set; }
+
+        public Product()
+        {
+            Ratings = new List<ProductRating>();
+        }
     }
 }
